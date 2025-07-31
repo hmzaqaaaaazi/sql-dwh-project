@@ -12,12 +12,25 @@
 -- This DO block terminates all other active connections to the datawarehouse
 -- to ensure we have exclusive access during setup operations
 
-DO $$ 
-BEGIN 
-   PERFORM pg_terminate_backend(pid) 
-   FROM pg_stat_activity 
-   WHERE datname = 'datawarehouse' AND pid <> pg_backend_pid(); 
-END $$ LANGUAGE plpgsql;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_database WHERE datname = 'datawarehouse') THEN
+        PERFORM pg_terminate_backend(pid)
+        FROM pg_stat_activity 
+        WHERE datname = 'datawarehouse' 
+        AND pid <> pg_backend_pid();
+        
+        RAISE NOTICE 'All connections to datawarehouse database have been terminated';
+    ELSE
+        RAISE NOTICE 'Database datawarehouse does not exist';
+    END IF;
+END $$
+LANGUAGE plpgsql;
+
+DROP DATABASE IF EXISTS datawarehouse;
+
+CREATE DATABASE datawarehouse;
+
 
 -- =====================================================
 -- STEP 2: CREATE MEDALLION ARCHITECTURE SCHEMAS
